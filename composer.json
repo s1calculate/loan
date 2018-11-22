@@ -1,6 +1,8 @@
 {
     "name": "s1calculate/loan",
     "description": "loan calculate",
+	"homepage": "https://github.com/s1calculate/loan",
+	"type": "library",
     "authors": [
         {
             "name": "Studio One",
