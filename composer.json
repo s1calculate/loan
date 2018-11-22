@@ -7,7 +7,6 @@
             "email": "g.vardanyan@studio-one.am"
         }
     ],
-    "minimum-stability": "dev",
     "autoload": {
         "psr-4": {
             "s1calculate\\loan\\": "src/finance"
