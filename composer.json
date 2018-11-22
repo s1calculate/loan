@@ -1,0 +1,20 @@
+{
+    "name": "s1calculate/loan",
+    "description": "loan calculate",
+    "authors": [
+        {
+            "name": "Studio One",
+            "email": "g.vardanyan@studio-one.am"
+        }
+    ],
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-4": {
+            "s1calculate\\loan\\": "src/finance"
+        }
+    },
+	
+    "require": {
+        "phpoffice/phpspreadsheet": "^1.5"
+    }
+}
