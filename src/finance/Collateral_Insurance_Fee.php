@@ -18,8 +18,10 @@ class Collateral_Insurance_Fee extends Base_Fee {
         if($loan_amount==0){
             return 0;
         }
+
         $result = $loan_amount * $this->percent / 100;
-        if($result > $this->fix_min && ($this->fix_max == 0 || $result < $this->fix_max))
+        //dd($result);
+        if($result > $this->fix_min && ($this->fix_max == 0 || $result <= $this->fix_max))
         {
             return round($result,2);
         }

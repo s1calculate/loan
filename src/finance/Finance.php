@@ -1,4 +1,4 @@
-<?php 
+<?php
 namespace S1calculate\Loan\Finance;
 
 use S1calculate\Loan\Finance\Loan_Service_Fee;
@@ -15,11 +15,9 @@ class Finance {
 	private $loan_application_fee = 0;    // Վարկային հայտի ուսումնասիրության վճար;  (միանվագ) Թիվ/տոկոս նվազ. առ. արժեքներով ********
 	private $loan_service_fee = 0;    // Վարկի սպասարկման վճար (տարեկան)  Թիվ/տոկոս ********
 
-    private $preferential_fees = 0;    //ԱՐՏՈՆՅԱԼ ՀԵՏՎՃԱՐՆԵՐ
-
 	//private $percent_period;    // Տոկոսի պարբերականություն (եռամսյակային/ամսական/սկզբում/վերջում);
-	//private $repayment_option;    // ՄԱՐՄԱՆ ԵՂԱՆԱԿ (հավասարաչափ / անհավասարաչափ);  ****
-	//private $provision_option;    // Տրամադրման եղանակ - ( կանխիկ / անկանխիկ )  ****;
+
+    private $repayment_method = null;     // ՄԱՐՄԱՆ ԵՂԱՆԱԿ		(հավասարաչափ/ոչ հավասարաչափ)  ****
 	private $collateral_assessment_fee =0;         // Գրավի գնահատման վճար (միանվագ)
 	private $cash_service_fee =0;         // Կանխիկացման վճար  նվազ. առ. արժեքներով
 	private $collateral_maintenance_fee =0;         // Գրավի պահպանման վճար (միանվագ)
@@ -33,17 +31,19 @@ class Finance {
 
 
 
-    private $Grace_Period = null;         // Արտոնյալ ժամկետ
-    private $repayment_method = null;     // ՄԱՐՄԱՆ ԵՂԱՆԱԿ		(հավասարաչափ/ոչ հավասարաչափ)
+    private $Grace_Period = null;// Արտոնյալ ժամկետ
+
+
+    private $loan_principial_grace_period = null;    // Վարկի Արտոնյալ ժամկետ
+    private $loan_interest_grace_period = null;      // Տոկոսի Արտոնյալ ժամկետ
+
     private $loan_repayment_period = null;     // ամսական/եռամսյակային/վերջում
     private $interest_repayment_period = null;     // ամսական/եռամսյակային/վերջում/սկզբում
 
+    private $loan_amount_interest = 0 ;      // Վարկի գումար + ՎԱՐԿԻ ՏՈԿՈՍներ
 
     public function __construct(){
-        //$this->service_fee = new Loan_Service_Fee();
-        //var_dump($this->loan_service_fee);
-        //$this->loan_service_fee = new Loan_Service_Fee();
-        //print_r($this->loan_service_fee);die;
+
     }
 
     public function setLoanpledge($pledge)
@@ -109,6 +109,24 @@ class Finance {
         }
     }
 
+    public function setLoanGracePeriodPrincipal($period)
+    {
+        if($period <= $this->loan_period && $period >= 0) {
+            $this->loan_principial_grace_period = $period;
+        }else{
+            throw new \Exception("Grace Period Principal  has invalid value");
+        }
+    }
+
+    public function setLoanGracePeriodInterest($period)
+    {
+        if($period <= $this->loan_period && $period >= 0) {
+            $this->loan_interest_grace_period = $period;
+        }else{
+            throw new \Exception("InterestRepaymentPeriod  has invalid value");
+        }
+    }
+
     public function setLoanInterestRepaymentPeriod($value)
     {
         if($value == 1 || $value == 2 || $value == 3 || $value ==4) {
@@ -131,32 +149,27 @@ class Finance {
      * @return double
      * if $FixPrice not 0 , function another parameters not using;
      */
+
 	public function setLoanApplicationFee($FixPrice=0,$Percent=0.0,$FixMin=0,$FixMax=0,$LoanType=1)
 	{
-	    try {
-            $application_fee = new Loan_Application_Fee();
-            if ($FixPrice != 0) {
-                $application_fee->setFixfee($FixPrice);
-                //$loan_aplication_fee = $application_fee->call();
-            }
-            if ($Percent >= 0 && $Percent < 100) {
-                $application_fee->setPercent($Percent);
-            }
-            if ($FixMin <= $FixMax) {
-                $application_fee->setFixmin($FixMin);
-                $application_fee->setFixmax($FixMax);
-            }
-            if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3) {
-                $application_fee->setLoantype($LoanType);
-            } else {
-                throw  new \Exception('LoanType can use this values 1 , 2 or 3');
-            }
-            $this->loan_application_fee = $application_fee;
+        $application_fee = new Loan_Application_Fee();
+        if ($FixPrice != 0) {
+            $application_fee->setFixfee($FixPrice);
+            //$loan_aplication_fee = $application_fee->call();
         }
-        catch(\Exception $e)
-        {
-            return $e->getMessage();
+        if ($Percent >= 0 && $Percent < 100) {
+            $application_fee->setPercent($Percent);
         }
+        if ($FixMin <= $FixMax) {
+            $application_fee->setFixmin($FixMin);
+            $application_fee->setFixmax($FixMax);
+        }
+        if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3) {
+            $application_fee->setLoantype($LoanType);
+        } else {
+            throw  new \Exception('LoanType can use this values 1 , 2 or 3');
+        }
+        $this->loan_application_fee = $application_fee;
 	}
 
     /**
@@ -169,37 +182,31 @@ class Finance {
      */
 	public function setLoanCollateralAssessmentFee($FixPrice=0,$Percent=0.0,$FixMin=0,$FixMax=0,$LoanType=1)
 	{
-	    try{
-            $collateral_assessment_fee = new Loan_Application_Fee();
-            if($FixPrice != 0)
-            {
-                $collateral_assessment_fee->setFixfee($FixPrice);
-
-            }
-            if($Percent >= 0 && $Percent < 100)
-            {
-                $collateral_assessment_fee->setPercent($Percent);
-            }
-            else
-            {
-                throw  new \Exception('Percent value incorrect');
-            }
-            if($FixMin <= $FixMax )
-            {
-                $collateral_assessment_fee->setFixmin($FixMin);
-                $collateral_assessment_fee->setFixmax($FixMax);
-            }
-            if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3) {
-                $collateral_assessment_fee->setLoantype($LoanType);
-            } else {
-                throw  new \Exception('LoanType can use this values 1 , 2 or 3');
-            }
-            $this->collateral_assessment_fee = $collateral_assessment_fee;
-        }
-        catch(\Exception $e)
+        $collateral_assessment_fee = new Collateral_Assessment_Fee();
+        if($FixPrice != 0)
         {
-            return $e->getMessage();
+            $collateral_assessment_fee->setFixfee($FixPrice);
+
         }
+        if($Percent >= 0 && $Percent < 100)
+        {
+            $collateral_assessment_fee->setPercent($Percent);
+        }
+        else
+        {
+            throw  new \Exception('Percent value incorrect');
+        }
+        if($FixMin <= $FixMax )
+        {
+            $collateral_assessment_fee->setFixmin($FixMin);
+            $collateral_assessment_fee->setFixmax($FixMax);
+        }
+        if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3) {
+            $collateral_assessment_fee->setLoantype($LoanType);
+        } else {
+            throw  new \Exception('LoanType can use this values 1 , 2 or 3');
+        }
+        $this->collateral_assessment_fee = $collateral_assessment_fee;
 	}
 
     /**
@@ -212,152 +219,118 @@ class Finance {
      */
     public function setLoanCashServiceFee($FixPrice=0,$Percent=0.0,$FixMin=0,$FixMax=0,$LoanType=1)
     {
-        try {
-            $cash_service_fee = new Loan_Application_Fee();
-            if ($FixPrice != 0) {
-                $cash_service_fee->setFixfee($FixPrice);
-            }
-            if ($Percent >= 0 && $Percent < 100) {
-                $cash_service_fee->setPercent($Percent);
-            } else {
-                throw  new \Exception('Percent value incorrect');
-            }
-            if ($FixMin <= $FixMax) {
-                $cash_service_fee->setFixmin($FixMin);
-                $cash_service_fee->setFixmax($FixMax);
-            }
-            if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3) {
-                $cash_service_fee->setLoantype($LoanType);
-            } else {
-                throw  new \Exception('LoanType can use this values 1 , 2 or 3');
-            }
-            $this->cash_service_fee = $cash_service_fee;
+        $cash_service_fee = new Cash_Service_Fee();
+        if ($FixPrice != 0) {
+            $cash_service_fee->setFixfee($FixPrice);
         }
-        catch(\Exception $e)
-        {
-            return $e->getMessage();
+        if ($Percent >= 0 && $Percent < 100) {
+            $cash_service_fee->setPercent($Percent);
+        } else {
+            throw  new \Exception('Percent value incorrect');
         }
+        if ($FixMin <= $FixMax) {
+            $cash_service_fee->setFixmin($FixMin);
+            $cash_service_fee->setFixmax($FixMax);
+        }
+        if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3) {
+            $cash_service_fee->setLoantype($LoanType);
+        } else {
+            throw  new \Exception('LoanType can use this values 1 , 2 or 3');
+        }
+        $this->cash_service_fee = $cash_service_fee;
     }
-
 
     public function setLoanBorrowerInsuranceFee($FixPrice=0,$Percent=0.0,$FixMin=0,$FixMax=0,$LoanType=1)
     {
-        try {
-            $borrower_insurance_fee = new Loan_Application_Fee();
-            if ($FixPrice != 0) {
-                $borrower_insurance_fee->setFixfee($FixPrice);
-            }
-            if ($Percent >= 0 && $Percent < 100) {
-                $borrower_insurance_fee->setPercent($Percent);
-            } else {
-                throw  new \Exception('Percent value incorrect');
-            }
-            if ($FixMin <= $FixMax) {
-                $borrower_insurance_fee->setFixmin($FixMin);
-                $borrower_insurance_fee->setFixmax($FixMax);
-            }
-            if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3) {
-                $borrower_insurance_fee->setLoantype($LoanType);
-            } else {
-                throw  new \Exception('LoanType can use this values 1 , 2 or 3');
-            }
-            $this->borrower_insurance_fee = $borrower_insurance_fee;
+        $borrower_insurance_fee = new Borrower_Insurance_Fee();
+        if ($FixPrice != 0) {
+            $borrower_insurance_fee->setFixfee($FixPrice);
         }
-        catch(\Exception $e)
-        {
-            return $e->getMessage();
+        if ($Percent >= 0 && $Percent < 100) {
+            $borrower_insurance_fee->setPercent($Percent);
+        } else {
+            throw  new \Exception('Percent value incorrect');
         }
+        if ($FixMin <= $FixMax) {
+            $borrower_insurance_fee->setFixmin($FixMin);
+            $borrower_insurance_fee->setFixmax($FixMax);
+        }
+        if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3) {
+            $borrower_insurance_fee->setLoantype($LoanType);
+        } else {
+            throw  new \Exception('LoanType can use this values 1 , 2 or 3');
+        }
+        $this->borrower_insurance_fee = $borrower_insurance_fee;
     }
-
 
     public function setLoanCollateralInsuranceFee($FixPrice=0,$Percent=0.0,$FixMin=0,$FixMax=0,$LoanType=1)
     {
-        try {
-            $collateral_insurance_fee = new Loan_Application_Fee();
-            if ($FixPrice != 0) {
-                $collateral_insurance_fee->setFixfee($FixPrice);
-            }
-
-            if ($Percent >= 0 && $Percent < 100) {
-                $collateral_insurance_fee->setPercent($Percent);
-            } else {
-                throw  new \Exception('Percent value incorrect');
-            }
-            if ($FixMin <= $FixMax) {
-                $collateral_insurance_fee->setFixmin($FixMin);
-                $collateral_insurance_fee->setFixmax($FixMax);
-            }
-            if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3) {
-                $collateral_insurance_fee->setLoantype($LoanType);
-            } else {
-                throw  new \Exception('LoanType can use this values 1 , 2 or 3');
-            }
-            $this->collateral_insurance_fee = $collateral_insurance_fee;
+        $collateral_insurance_fee = new Collateral_Insurance_Fee();
+        if ($FixPrice != 0) {
+            $collateral_insurance_fee->setFixfee($FixPrice);
         }
-        catch(\Exception $e)
-        {
-            return $e->getMessage();
+        if ($Percent >= 0 && $Percent < 100) {
+            $collateral_insurance_fee->setPercent($Percent);
+        } else {
+            throw  new \Exception('Percent value incorrect');
         }
+        if ($FixMin <= $FixMax) {
+            $collateral_insurance_fee->setFixmin($FixMin);
+            $collateral_insurance_fee->setFixmax($FixMax);
+        }
+        if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3 || $LoanType == 4) {
+            $collateral_insurance_fee->setLoantype($LoanType);
+        } else {
+            throw  new \Exception('LoanType can use this values 1 , 2 or 3');
+        }
+        $this->collateral_insurance_fee = $collateral_insurance_fee;
     }
-
 
     public function setLoanCollateralMaintenanceFee($FixPrice=0,$Percent=0.0,$FixMin=0,$FixMax=0,$LoanType=1)
     {
-        try {
-            $collateral_maintenance_fee = new Loan_Application_Fee();
-            if ($FixPrice != 0) {
-                $collateral_maintenance_fee->setFixfee($FixPrice);
-            }
-            if ($Percent > 0 && $Percent < 100) {
-                $collateral_maintenance_fee->setPercent($Percent);
-            } else {
-                throw  new \Exception('Percent value incorrect');
-            }
-            if ($FixMin <= $FixMax) {
-                $collateral_maintenance_fee->setFixmin($FixMin);
-                $collateral_maintenance_fee->setFixmax($FixMax);
-            }
-            if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3) {
-                $collateral_maintenance_fee->setLoantype($LoanType);
-            } else {
-                throw  new \Exception('LoanType can use this values 1 , 2 or 3');
-            }
-            $this->collateral_maintenance_fee = $collateral_maintenance_fee;
+        $collateral_maintenance_fee = new Collateral_Maintenance_Fee();
+        if ($FixPrice != 0) {
+            $collateral_maintenance_fee->setFixfee($FixPrice);
         }
-        catch(\Exception $e)
-        {
-            return $e->getMessage();
+        if ($Percent >= 0 && $Percent < 100) {
+            $collateral_maintenance_fee->setPercent($Percent);
+        } else {
+            throw  new \Exception('Percent value incorrect');
         }
+        if ($FixMin <= $FixMax) {
+            $collateral_maintenance_fee->setFixmin($FixMin);
+            $collateral_maintenance_fee->setFixmax($FixMax);
+        }
+        if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3 || $LoanType == 4) {
+            $collateral_maintenance_fee->setLoantype($LoanType);
+        } else {
+            throw  new \Exception('LoanType can use this values 1 , 2 or 3');
+        }
+        $this->collateral_maintenance_fee = $collateral_maintenance_fee;
     }
-
 
     public function setLoanNotaryValidationFee($FixPrice=0,$Percent=0.0,$FixMin=0,$FixMax=0,$LoanType=1)
     {
-        try {
-            $notary_validation_fee = new Loan_Application_Fee();
-            if ($FixPrice != 0) {
-                $notary_validation_fee->setFixfee($FixPrice);
-            }
-            if ($Percent > 0 && $Percent < 100) {
-                $notary_validation_fee->setPercent($Percent);
-            } else {
-                throw  new \Exception('Percent value incorrect');
-            }
-            if ($FixMin <= $FixMax) {
-                $notary_validation_fee->setFixmin($FixMin);
-                $notary_validation_fee->setFixmax($FixMax);
-            }
-            if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3) {
-                $notary_validation_fee->setLoantype($LoanType);
-            } else {
-                throw  new \Exception('LoanType can use this values 1 , 2 or 3');
-            }
-            $this->notary_validation_fee = $notary_validation_fee;
+
+        $notary_validation_fee = new Notary_Validation_Fee();
+        if ($FixPrice != 0) {
+            $notary_validation_fee->setFixfee($FixPrice);
         }
-        catch(\Exception $e)
-        {
-            return $e->getMessage();
+        if ($Percent >= 0 && $Percent < 100) {
+            $notary_validation_fee->setPercent($Percent);
+        } else {
+            throw  new \Exception('Percent value incorrect');
         }
+        if ($FixMin <= $FixMax) {
+            $notary_validation_fee->setFixmin($FixMin);
+            $notary_validation_fee->setFixmax($FixMax);
+        }
+        if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3) {
+            $notary_validation_fee->setLoantype($LoanType);
+        } else {
+            throw  new \Exception('LoanType can use this values 1 , 2 or 3');
+        }
+        $this->notary_validation_fee = $notary_validation_fee;
     }
 
     /**
@@ -373,50 +346,52 @@ class Finance {
      */
     public function setLoanServiceFee($FixPrice=0,$Percent=0.0,$FixMin=0,$FixMax=0,$LoanType=1)
     {
-        try {
-            $service_fee = new Loan_Service_Fee();
-
-            if ($FixPrice != 0) {
-                $service_fee->setFixfee($FixPrice);
-            }
-            if ($Percent >= 0 && $Percent < 100) {
-                $service_fee->setPercent($Percent);
-            } else {
-
-                throw  new \Exception('Percent value incorrect');
-            }
-            if ($FixMin <= $FixMax) {
-                $service_fee->setFixmin($FixMin);
-                $service_fee->setFixmax($FixMax);
-            }
-            if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3) {
-                $service_fee->setLoantype($LoanType);
-            } else {
-                throw  new \Exception('LoanType can use this values 1 , 2 or 3');
-            }
-            $this->loan_service_fee = $service_fee;
+        //dd($LoanType);
+        $service_fee = new Loan_Service_Fee();
+        if ($FixPrice != 0) {
+            $service_fee->setFixfee($FixPrice);
         }
-        catch(\Exception $e)
-        {
-            return $e->getMessage();
+        if ($Percent >= 0 && $Percent < 100) {
+            $service_fee->setPercent($Percent);
+        } else {
+
+            throw  new \Exception('Percent value incorrect');
         }
+        if ($FixMin <= $FixMax) {
+            $service_fee->setFixmin($FixMin);
+            $service_fee->setFixmax($FixMax);
+        }
+        if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3) {
+            $service_fee->setLoantype($LoanType);
+        } else {
+            throw  new \Exception('LoanType can use this values 1 , 2 or 3');
+        }
+        $this->loan_service_fee = $service_fee;
     }
 
-    public function setLoanCadastreFee($FixPrice=0)
+    public function setLoanCadastreFee($FixPrice=0,$Percent=0.0,$FixMin=0,$FixMax=0,$LoanType=1)
     {
-        try {
-            $cadastre_fee = new Cadastre_Fee();
-            if ($FixPrice != 0) {
-                $cadastre_fee->setFixfee($FixPrice);
-            }
-            $this->cadastre_fee = $cadastre_fee;
+        $cadastre_fee = new Cadastre_Fee();
+        if ($FixPrice != 0) {
+            $cadastre_fee->setFixfee($FixPrice);
         }
-        catch(\Exception $e)
-        {
-            return $e->getMessage();
-        }
-    }
+        if ($Percent >= 0 && $Percent < 100) {
+            $cadastre_fee->setPercent($Percent);
+        } else {
 
+            throw  new \Exception('Percent value incorrect');
+        }
+        if ($FixMin <= $FixMax) {
+            $cadastre_fee->setFixmin($FixMin);
+            $cadastre_fee->setFixmax($FixMax);
+        }
+        if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3) {
+            $cadastre_fee->setLoantype($LoanType);
+        } else {
+            throw  new \Exception('LoanType can use this values 1 , 2 or 3');
+        }
+        $this->cadastre_fee = $cadastre_fee;
+    }
 
     public function setLoanPledgeStateFee($FixPrice=0)
     {
@@ -435,37 +410,29 @@ class Finance {
 
     public function setLoanOtherFee($FixPrice=0,$FeeType=1,$Percent=0.0,$FixMin=0,$FixMax=0,$LoanType=1)
     {
-        try {
-            $other_fee = new Loan_Other_Fee();
+        $other_fee = new Loan_Other_Fee();
 
-            $other_fee->setFixfee($FixPrice);
-            if ($Percent >= 0 && $Percent < 100) {
-                $other_fee->setPercent($Percent);
-            } else {
-                throw  new \Exception('Percent value incorrect');
-            }
-            if ($FixMin <= $FixMax) {
-                $other_fee->setFixmin($FixMin);
-                $other_fee->setFixmax($FixMax);
-            }
-            if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3 || $LoanType == 4) {
-                $other_fee->setLoantype($LoanType);
-            } else {
-                throw  new \Exception('LoanType can use this values 1 , 2 , 3 or 4');
-            }
-            if ($FeeType == 1 || $FeeType == 2 || $FeeType == 3) {
-                $other_fee->setFeetype($FeeType);
-            } else {
-                throw  new \Exception('FeeType can use this values 1 , 2 or 3');
-            }
-
-            $this->loan_other_fee[] = $other_fee;
+        $other_fee->setFixfee($FixPrice);
+        if ($Percent >= 0 && $Percent < 100) {
+            $other_fee->setPercent($Percent);
+        } else {
+            throw  new \Exception('Percent value incorrect');
         }
-        catch(\Exception $e)
-        {
-            return $e->getMessage();
+        if ($FixMin <= $FixMax) {
+            $other_fee->setFixmin($FixMin);
+            $other_fee->setFixmax($FixMax);
         }
-
+        if ($LoanType == 1 || $LoanType == 2 || $LoanType == 3 || $LoanType == 4) {
+            $other_fee->setLoantype($LoanType);
+        } else {
+            throw  new \Exception('LoanType can use this values 1 , 2 , 3 or 4');
+        }
+        if ($FeeType == 1 || $FeeType == 2 || $FeeType == 3) {
+            $other_fee->setFeetype($FeeType);
+        } else {
+            throw  new \Exception('FeeType can use this values 1 , 2 or 3');
+        }
+        $this->loan_other_fee[] = $other_fee;
     }
 
     public function Calculate()
@@ -475,45 +442,37 @@ class Finance {
         $dates = array();
         $mountly_pay = array();
         $other_fee = 0;
-
         $start_date = date('Y-m-d');
         $dates[0] = $start_date;
-        $mountly_pay[0] = -$this->getLoanamount();
         foreach($result['other_fee'] as $value){
             $other_fee +=$value;
         }
-        //dd($result['schedule']);
+        $mountly_pay[0] = -$this->getLoanamount() + $other_fee;
         foreach($result['schedule'] as $key => $value){
-            if($key ==0){
-                $mountly_pay[$key+1]=$other_fee;
+            if($key == 0){
+                $mountly_pay[$key+1] =  0;
             }else{
-                $mountly_pay[$key+1]=0;
+                $mountly_pay[$key+1] = 0;
             }
             foreach ($value as $k => $v) {
-
                 if ($k == "loan_pay_day") {
                     $dates[$key+1] = $v;
                 } else {
                     if($k != "principal_balance") {
-                        $mountly_pay[$key + 1] += $v;
+                        $mountly_pay[$key+1] += $v;
                     }
                 }
             }
         }
-        //dd($mountly_pay);
-
-        //dd($dates,$mountly_pay);
         $xirr = $spreadsheet->xirr($mountly_pay,$dates);
         $result['xirr'] = $xirr;
         return $result;
     }
 
 
-
-
 	public function Monthly_Pay_Schedule($loan_amount,$period,$percent,$start_date=false,$prevPaymentDay=false,$loan_fee_day=false,$onetime_fee=0,$cashing_fee=0,$mount_fee=0,$year_insurance_fee=0)
 	{
-
+	    $this->loan_amount_interest = $this->loan_amount;
         if ($start_date == false)
         {
             $start_date = date('m/d/Y');
@@ -536,31 +495,41 @@ class Finance {
 		$perc = $percent/100;
 		$nextPaymentDay = $this->Pay_Dates($loan_amount,$period,$start_date,$prevPaymentDay,$loan_fee_day);
 		$diff_dates = $this->Pay_Dates_Diff($period,$nextPaymentDay);
-        if($this->repayment_method == null || $this->repayment_method == 1) {
+        if($this->repayment_method == null && $this->repayment_method == 1 && $this->loan_principial_grace_period == null && $this->loan_interest_grace_period ==null) {
             $annuity = $this->Annuity($loan_amount, $period, $start_date, $prevPaymentDay, $loan_fee_day, $percent,$this->loan_repayment_period);
         }
         else{
-            $not_annuity = $this->Not_Annuity($loan_amount, $period, $this->loan_repayment_period);
+            $not_annuity = $this->Not_Annuity($loan_amount, $period, $this->loan_repayment_period,$this->loan_principial_grace_period);
         }
-
 		for($i = 0 ; $i< $period ; $i++)
 		{
 		    if($this->interest_repayment_period == 1 || $this->interest_repayment_period == null) {        /* when interest is pay every mountly  */
-                if ($i == 0) {
-                    $monthly_interest[$i] = round($loan_amount * $perc / 365 * $diff_dates[$i], 2);
-                } else {
-                    $monthly_interest[$i] = round($principal_balance[$i - 1] * $perc / 365 * $diff_dates[$i], 2);
+                if($this->loan_interest_grace_period == null || $this->loan_interest_grace_period == 0) {
+                    if ($i == 0) {
+                        $monthly_interest[$i] = round($loan_amount * $perc / 365 * $diff_dates[$i], 2);
+                    } else {
+                        $monthly_interest[$i] = round($principal_balance[$i - 1] * $perc / 365 * $diff_dates[$i], 2);
+                    }
+                }else{
+                    if(($i+1) <= $this->loan_interest_grace_period ) {
+                        $monthly_interest[$i] = 0;
+                    }else{
+                        $monthly_interest[$i] = round($principal_balance[$i - 1] * $perc / 365 * $diff_dates[$i], 2);
+                    }
                 }
             }
-            elseif($this->interest_repayment_period == 2 ){                    /* when interest is pay every 3 mounth  */
+            elseif($this->interest_repayment_period == 2 ){                         /* when interest is pay every 3 mounth  */
                 if ($i == 0) {
                     $monthly_interest_buffer += round($loan_amount * $perc / 365 * $diff_dates[$i], 2);
                 } else {
                     $monthly_interest_buffer += round($principal_balance[$i - 1] * $perc / 365 * $diff_dates[$i], 2);
                 }
-                if(($i+1)%3==0 || $i == ($period-1)){
+                if(($i+1) <= $this->loan_interest_grace_period ) {
+                    $monthly_interest_buffer = 0;
+                }
+                if( ($i+1)%3==0 || $i == ($period-1) ){
                     $monthly_interest[$i] = $monthly_interest_buffer;
-                    $monthly_interest_buffer= 0 ;
+                    $monthly_interest_buffer = 0;
                 }else{
                     $monthly_interest[$i] = 0;
                 }
@@ -571,9 +540,18 @@ class Finance {
                 } else {
                     $monthly_interest_buffer += round($principal_balance[$i - 1] * $perc / 365 * $diff_dates[$i], 2);
                 }
+                if(($i+1) <= $this->loan_interest_grace_period ) {
+                    $monthly_interest_buffer = 0;
+                }
                 if($i == ($period-1)){
-                    $monthly_interest[$i] = $monthly_interest_buffer;
-                    $monthly_interest_buffer = 0 ;
+                    if($this->loan_interest_grace_period == null || $this->loan_interest_grace_period == 0 || ($i+1) > $this->loan_interest_grace_period ) {
+                        $monthly_interest[$i] = $monthly_interest_buffer;
+                        $monthly_interest_buffer = 0;
+                    }
+                    else{
+                        $monthly_interest[$i] = 0;
+                        $monthly_interest_buffer = 0;
+                    }
                 }else{
                     $monthly_interest[$i] = 0;
                 }
@@ -671,6 +649,11 @@ class Finance {
             else{                                                          /* WHEN Loan repayment method is NOT ANNUITY  */
                 if ($this->loan_repayment_period == 1) {
                     $last_monthly_principal_amount = $not_annuity;
+                    if($this->loan_principial_grace_period != null && $this->loan_principial_grace_period > 0){
+                        if(($i+1) <= $this->loan_principial_grace_period){
+                            $last_monthly_principal_amount = 0;
+                        }
+                    }
                     $monthly_principal_amount[$i] = $last_monthly_principal_amount;
                     if ($i == 0) {
                         $principal_balance[$i] = $loan_amount - $last_monthly_principal_amount;
@@ -684,6 +667,11 @@ class Finance {
                 } elseif ($this->loan_repayment_period == 2) {
                     if (($i + 1) % 3 == 0) {
                         $last_monthly_principal_amount = $not_annuity;
+                        if($this->loan_principial_grace_period != null && $this->loan_principial_grace_period > 0){
+                            if(($i+1) <= $this->loan_principial_grace_period){
+                                $last_monthly_principal_amount = 0;
+                            }
+                        }
                         $monthly_principal_amount[$i] = $last_monthly_principal_amount;
                         if ($i == 0) {
                             $principal_balance[$i] = $loan_amount - $last_monthly_principal_amount;
@@ -696,6 +684,11 @@ class Finance {
                         }
                     } else {
                         $last_monthly_principal_amount = 0;
+                        if($this->loan_principial_grace_period != null && $this->loan_principial_grace_period > 0){
+                            if(($i+1) <= $this->loan_principial_grace_period){
+                                $last_monthly_principal_amount = 0;
+                            }
+                        }
                         $monthly_principal_amount[$i] = $last_monthly_principal_amount;
                         if ($i == 0) {
                             $principal_balance[$i] = $loan_amount - $last_monthly_principal_amount;
@@ -710,6 +703,12 @@ class Finance {
                 } elseif ($this->loan_repayment_period == 3) {
                     if ($i == ($period - 1)) {
                         $last_monthly_principal_amount = $not_annuity;
+
+                        if($this->loan_principial_grace_period != null && $this->loan_principial_grace_period > 0){
+                            if(($i+1) <= $this->loan_principial_grace_period){
+                                $last_monthly_principal_amount = 0;
+                            }
+                        }
                         $monthly_principal_amount[$i] = $last_monthly_principal_amount;
                         if ($i == 0) {
                             $principal_balance[$i] = $loan_amount - $last_monthly_principal_amount;
@@ -722,6 +721,11 @@ class Finance {
                         }
                     } else {
                         $last_monthly_principal_amount = 0;
+                        if($this->loan_principial_grace_period != null && $this->loan_principial_grace_period > 0){
+                            if(($i+1) <= $this->loan_principial_grace_period){
+                                $last_monthly_principal_amount = 0;
+                            }
+                        }
                         $monthly_principal_amount[$i] = $last_monthly_principal_amount;
                         if ($i == 0) {
                             $principal_balance[$i] = $loan_amount - $last_monthly_principal_amount;
@@ -736,9 +740,7 @@ class Finance {
                 }
             }
             $schedule[$i] = array("principal_balance" => $principal_balance[$i], "monthly_interest" => $monthly_interest[$i], "monthly_principal_amount" => $monthly_principal_amount[$i], "loan_pay_day" => $nextPaymentDay[$i + 1]);
-
-
-
+            $this->loan_amount_interest +=$monthly_interest[$i];
 		}
 		if($this->interest_repayment_period == 4){
             $schedule[0]["monthly_interest"] = $monthly_interest[0];
@@ -753,16 +755,40 @@ class Finance {
                 $princ_bal = $schedule[$i-1]['principal_balance'];
             }
             $other_fee_count = count($this->loan_other_fee);
+            $this->loan_other_onetime_fee=array();
+            for($j=0 ; $j<$other_fee_count ;$j++){
+                if($this->loan_other_fee[$j]->{'fee_type'}==1){
+                    if($this->loan_other_fee[$j]->{'fix_fee'} > 0){
+                        $this->loan_other_onetime_fee[] = $this->loan_other_fee[$j]->Calc();
+                    }else{
+                        $other_fee_loantype = $this->loan_other_fee[$j]->{'loan_type'};
+                        switch($other_fee_loantype){
+                            case 1:
+                                $this->loan_other_onetime_fee[] = $this->loan_other_fee[$j]->Calc($this->loan_amount);
+                                break;
+                            case 2:
+                                $this->loan_other_onetime_fee[] = $this->loan_other_fee[$j]->Calc($princ_bal);
+                                break;
+                            case 3:
+                                $this->loan_other_onetime_fee[] = $this->loan_other_fee[$j]->Calc($this->pledge);
+                                break;
+                            case 4:
+                                $this->loan_other_year_fee[] = $this->loan_other_fee[$i]->Calc($this->loan_amount_interest);
+                                break;
+                        }
+                    }
+                }
+            }
             if(!isset($year)) {
                 $year = date("Y", strtotime($nextPaymentDay[$i + 1]));
-
                 $this->loan_other_year_fee=array();
+                $this->loan_other_mount_fee=array();
                 for($j=0 ; $j<$other_fee_count ;$j++){
                     if($this->loan_other_fee[$j]->{'fee_type'}==3){
                         if($this->loan_other_fee[$j]->{'fix_fee'} > 0){
                             $this->loan_other_year_fee[] = $this->loan_other_fee[$j]->Calc();
                         }else{
-                            $other_fee_loantype=$this->loan_other_fee[$j]->{'loan_type'};
+                            $other_fee_loantype = $this->loan_other_fee[$j]->{'loan_type'};
                             switch($other_fee_loantype){
                                 case 1:
                                     $this->loan_other_year_fee[] = $this->loan_other_fee[$j]->Calc($this->loan_amount);
@@ -774,23 +800,43 @@ class Finance {
                                     $this->loan_other_year_fee[] = $this->loan_other_fee[$j]->Calc($this->pledge);
                                     break;
                                 case 4:
-                                    //$this->loan_other_year_fee[] = $this->loan_other_fee[$i]->Calc($this->pledge);
+                                    $this->loan_other_year_fee[] = $this->loan_other_fee[$i]->Calc($this->loan_amount_interest);
                                     break;
                             }
-
+                        }
+                    }
+                    if($this->loan_other_fee[$j]->{'fee_type'}==2){
+                        if($this->loan_other_fee[$j]->{'fix_fee'} > 0){
+                            $this->loan_other_mount_fee[] = $this->loan_other_fee[$j]->Calc();
+                        }else{
+                            $other_fee_loantype=$this->loan_other_fee[$j]->{'loan_type'};
+                            switch($other_fee_loantype){
+                                case 1:
+                                    $this->loan_other_mount_fee[] = $this->loan_other_fee[$j]->Calc($this->loan_amount);
+                                    break;
+                                case 2:
+                                    $this->loan_other_mount_fee[] = $this->loan_other_fee[$j]->Calc($princ_bal);
+                                    break;
+                                case 3:
+                                    $this->loan_other_mount_fee[] = $this->loan_other_fee[$j]->Calc($this->pledge);
+                                    break;
+                                case 4:
+                                    $this->loan_other_year_fee[] = $this->loan_other_fee[$i]->Calc($this->loan_amount_interest);
+                                    break;
+                            }
                         }
                     }
                 }
                 if(gettype($this->loan_service_fee) == "object")
                 {
                     $loan_type = $this->loan_service_fee->getLoantype();
-
                     $value = $this->CalcValue($loan_type,$princ_bal);
                     $schedule[$i] += ["loan_service_fee"=>$this->loan_service_fee->Calc($value)];
                 }
                 if(gettype($this->collateral_insurance_fee) == "object")
                 {
                     $loan_type = $this->collateral_insurance_fee->getLoantype();
+                    //dd($loan_type);
                     $value = $this->CalcValue($loan_type,$princ_bal);
                     $schedule[$i] += ["collateral_insurance_fee"=>$this->collateral_insurance_fee->Calc($value)];
                 }
@@ -800,16 +846,20 @@ class Finance {
                     $value = $this->CalcValue($loan_type,$princ_bal);
                     $schedule[$i] += ["borrower_insurance_fee"=>$this->borrower_insurance_fee->Calc($value)];
                 }
-                //$schedule[$i] += ["loan_service_fee"=>$this->service_fee->Calc($princ_bal)];
                 for($t=0 ; $t<count($this->loan_other_year_fee);$t++)
                 {
                     $schedule[$i] += ["loan_other_year_fee_".$t=>$this->loan_other_year_fee[$t]];
+                }
+                for($t=0 ; $t<count($this->loan_other_mount_fee);$t++)
+                {
+                    $schedule[$i] += ["loan_other_mount_fee_".$t=>$this->loan_other_mount_fee[$t]];
                 }
             }
             else {
                 if ($year != date("Y", strtotime($nextPaymentDay[$i + 1]))) {
                     $year = date("Y", strtotime($nextPaymentDay[$i + 1]));
                     $this->loan_other_year_fee=array();
+                    $this->loan_other_mount_fee=array();
                     for($j=0 ; $j<$other_fee_count ;$j++){
                         if($this->loan_other_fee[$j]->{'fee_type'}==3){
                             if($this->loan_other_fee[$j]->{'fix_fee'} > 0){
@@ -827,10 +877,30 @@ class Finance {
                                         $this->loan_other_year_fee[] = $this->loan_other_fee[$j]->Calc($this->pledge);
                                         break;
                                     case 4:
-                                        //$this->loan_other_year_fee[] = $this->loan_other_fee[$i]->Calc($this->pledge);
+                                        $this->loan_other_year_fee[] = $this->loan_other_fee[$i]->Calc($this->loan_amount_interest);
                                         break;
                                 }
-
+                            }
+                        }
+                        if($this->loan_other_fee[$j]->{'fee_type'}==2){
+                            if($this->loan_other_fee[$j]->{'fix_fee'} > 0){
+                                $this->loan_other_mount_fee[] = $this->loan_other_fee[$j]->Calc();
+                            }else{
+                                $other_fee_loantype=$this->loan_other_fee[$j]->{'loan_type'};
+                                switch($other_fee_loantype){
+                                    case 1:
+                                        $this->loan_other_mount_fee[] = $this->loan_other_fee[$j]->Calc($this->loan_amount);
+                                        break;
+                                    case 2:
+                                        $this->loan_other_mount_fee[] = $this->loan_other_fee[$j]->Calc($princ_bal);
+                                        break;
+                                    case 3:
+                                        $this->loan_other_mount_fee[] = $this->loan_other_fee[$j]->Calc($this->pledge);
+                                        break;
+                                    case 4:
+                                        $this->loan_other_year_fee[] = $this->loan_other_fee[$i]->Calc($this->loan_amount_interest);
+                                        break;
+                                }
                             }
                         }
                     }
@@ -856,6 +926,10 @@ class Finance {
                     {
                         $schedule[$i] += ["loan_other_year_fee_".$t=>$this->loan_other_year_fee[$t]];
                     }
+                    for($t=0 ; $t<count($this->loan_other_mount_fee);$t++)
+                    {
+                        $schedule[$i] += ["loan_other_mount_fee_".$t=>$this->loan_other_mount_fee[$t]];
+                    }
                 } else {
                     $this->loan_other_year_fee=array();
                     for($j=0 ; $j < $other_fee_count ;$j++){
@@ -875,10 +949,9 @@ class Finance {
                                         $this->loan_other_year_fee[] = $this->loan_other_fee[$j]->Calc($this->pledge);
                                         break;
                                     case 4:
-                                        //$this->loan_other_year_fee[] = $this->loan_other_fee[$i]->Calc($this->pledge);
+                                        $this->loan_other_year_fee[] = $this->loan_other_fee[$i]->Calc($this->loan_amount_interest);
                                         break;
                                 }
-
                             }
                         }
                     }
@@ -888,12 +961,9 @@ class Finance {
                     }
                 }
             }
-
-
-		    //print_r($schedule[$i]['principal_balance']);die;
 			//$schedule[$i]+=["monthly_service_fee"=>$monthly_service_fee[$i],"annual_insurance_fee"=>$annual_insurance_fee[$i]];
 		}
-        $other_fee =array();
+        $other_fee = array();
         if(gettype($this->loan_application_fee) == "object")
         {
             $loan_type = $this->loan_application_fee->getLoantype();
@@ -932,21 +1002,23 @@ class Finance {
         }
         if(gettype($this->cadastre_fee) == "object")
         {
-
-
-           $other_fee += ["cadastre_fee"=>$this->cadastre_fee->Calc()];
+            $loan_type = $this->cadastre_fee->getLoantype();
+            $value = $this->CalcValue($loan_type,0);
+            $other_fee += ["cadastre_fee"=>$this->cadastre_fee->Calc($value)];
         }
-		//$other_fee = $this->Onetime_And_Cashing_Fee($loan_amount,$onetime_fee,$cashing_fee);
-		//$one_time_fee = ["loan_application_fee"=>$this->loan_application_fee->Calc($this->loan_amount)];
-		$all_in_schedule=array();
+        for($t=0 ; $t<count($this->loan_other_onetime_fee);$t++)
+        {
+            $other_fee += ["loan_other_onetime_fee_".$t=>$this->loan_other_onetime_fee[$t]];
+        }
+		$all_in_schedule = array();
 		$all_in_schedule = ["other_fee"=>$other_fee,"schedule"=>$schedule];
-		
+
 		return $all_in_schedule;
 	}
 
 	public function Annuity($loan_amount,$period,$start_date,$prevPaymentDay,$loan_fee_day,$percent,$loan_repayment_period)
 	{
-		
+
 		$nextPaymentDay = $this->Pay_Dates($loan_amount,$period,$start_date,$prevPaymentDay,$loan_fee_day);
 		$diff_dates = $this->Pay_Dates_Diff($period,$nextPaymentDay);
 
@@ -1047,28 +1119,46 @@ class Finance {
 
 	}
 
-    public function Not_Annuity($loan_amount,$period,$loan_repayment_period)
+    public function Not_Annuity($loan_amount,$period,$loan_repayment_period,$loan_principial_grace_period=null)
     {
-
-        //$nextPaymentDay = $this->Pay_Dates($loan_amount,$period,$start_date,$prevPaymentDay,$loan_fee_day);
-        //$diff_dates = $this->Pay_Dates_Diff($period,$nextPaymentDay);
-
-        for($i=0 ; $i < $period ; $i++)
+        $period_fix = $period;
+        if($loan_principial_grace_period == null || $loan_principial_grace_period == 0)
         {
             if($loan_repayment_period == 1) {
-                $mountly_principial = round($loan_amount/$period,2);
+                $mountly_principial = round($loan_amount/$period_fix,2);
             }
             elseif($loan_repayment_period == 2){
-                $dadar = ceil($period/3);
+                $dadar = ceil($period_fix/3);
                 $mountly_principial = round($loan_amount/$dadar,2);
             }
             elseif($loan_repayment_period == 3){
-                $dadar = $period - 1;
+                $dadar = 1;
                 $mountly_principial = round($loan_amount/$dadar,2);
             }
-
+            return $mountly_principial;
         }
-        return $mountly_principial;
+        else {
+            $count =0;
+            if ($loan_repayment_period == 1) {
+                if ($loan_principial_grace_period != null && $loan_principial_grace_period > 0) {
+                    $period_fix = $period_fix - $loan_principial_grace_period;
+                }
+                $mountly_principial = round($loan_amount / $period_fix, 2);
+            } elseif ($loan_repayment_period == 2) {
+                for ($i = 0; $i < $period; $i++) {
+                    if (($i + 1) % 3 == 0 && ($i + 1) > $loan_principial_grace_period) {
+                        $count++;
+                    } elseif ($i == $period_fix - 1 && ($i + 1) % 3 != 0) {
+                        $count++;
+                    }
+                }
+                $mountly_principial = round($loan_amount / $count, 2);
+            } elseif ($loan_repayment_period == 3) {
+                $dadar = 1;
+                $mountly_principial = round($loan_amount / $dadar, 2);
+            }
+            return $mountly_principial;
+        }
     }
 
 	public function Pay_Dates_Diff($period,$nextPaymentDay)
@@ -1084,16 +1174,16 @@ class Finance {
 		}
 		return $diff_dates;
 	}
-	
+
 	public function Pay_Dates($loan_amount,$period,$start_date,$prevPaymentDay,$loan_fee_day)
-	{		
+	{
 		$get_date = new S1_Service_Financial_LoanSchedule();
 		for($i=0 ; $i<=$period ; $i++)
 		{
-			$nextPaymentDay[$i] = $get_date->getPaymentDate($prevPaymentDay,$start_date,$i,$loan_fee_day); 
+			$nextPaymentDay[$i] = $get_date->getPaymentDate($prevPaymentDay,$start_date,$i,$loan_fee_day);
 			$prevPaymentDay = $nextPaymentDay[$i];
 		}
-		
+
 		return $nextPaymentDay;
 	}
 
@@ -1116,7 +1206,7 @@ class Finance {
 
 	public function Monthly_Service_Fee($loan_amount,$period,$principal_balance,$diff_dates,$mount_fee)
 	{
-		
+
 		$Ams_spas_vchar = array();
 		for($i = 0 ; $i< $period ; $i++)
 		{
@@ -1138,13 +1228,13 @@ class Finance {
 		}
 		return $Ams_spas_vchar;
 	}
-	
+
 	public function Onetime_And_Cashing_Fee($loan_amount,$onetime_fee,$cashing_fee)
 	{
 		$sum = $loan_amount*$onetime_fee/100 + $loan_amount*$cashing_fee/100 ;
 		return $sum;
 	}
-	
+
 	public function ca_multyple($array)
 	{
 		$sum = 1;
@@ -1157,7 +1247,7 @@ class Finance {
 	}
 
 	public function CalcValue($v,$principal_balance){
-        //var_dump($v);die;
+
         switch ($v) {
             case 1:
                 $value = $this->loan_amount;
@@ -1167,6 +1257,9 @@ class Finance {
                 break;
             case 3:
                 $value = $this->pledge;
+                break;
+            case 4:
+                $value = $this->loan_amount_interest;
                 break;
             default:
                 throw new \Exception(" Loantype proble  ");

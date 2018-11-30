@@ -24,7 +24,7 @@ class Loan_Application_Fee  extends Base_Fee{
             return 0;
         }
         $result = $loan_amount * $this->percent / 100;
-        if($result > $this->fix_min && ($this->fix_max == 0 || $result < $this->fix_max))
+        if($result > $this->fix_min && ($this->fix_max == 0 || $result <= $this->fix_max))
         {
             return $result;
         }
