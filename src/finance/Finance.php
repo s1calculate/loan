@@ -63,7 +63,7 @@ class Finance {
 			$period = $period/30;
 			$this->loan_period=$period;
 		}
-		elseif($period > 30 == 0 && $period != 0)
+		elseif($period > 30  && $period != 0)
 		{
 			$period = round($period/30);
 			$this->loan_period=$period;
@@ -444,26 +444,38 @@ class Finance {
         $other_fee = 0;
         $start_date = date('Y-m-d');
         $dates[0] = $start_date;
+        $dates[1] = $start_date;
         foreach($result['other_fee'] as $value){
             $other_fee +=$value;
         }
-        $mountly_pay[0] = -$this->getLoanamount() + $other_fee;
+        $mountly_pay[0] = -$this->getLoanamount();
+        $mountly_pay[1] = $other_fee;
+
         foreach($result['schedule'] as $key => $value){
             if($key == 0){
-                $mountly_pay[$key+1] =  0;
-            }else{
-                $mountly_pay[$key+1] = 0;
+                $mountly_pay[$key+2] = 0;
+                $dates[$key+2] = 0;
+
+            }elseif($key == 1) {
+                $mountly_pay[$key+2] = 0;
+                $dates[$key+2] = 0;
             }
+            else{
+                $mountly_pay[$key+2] = 0;
+                $dates[$key+2] = 0;
+            }
+            //dd($dates,$mountly_pay);
             foreach ($value as $k => $v) {
                 if ($k == "loan_pay_day") {
-                    $dates[$key+1] = $v;
+                    $dates[$key+2] = $v;
                 } else {
                     if($k != "principal_balance") {
-                        $mountly_pay[$key+1] += $v;
+                        $mountly_pay[$key+2] += $v;
                     }
                 }
             }
         }
+        //dd($mountly_pay,$dates);
         $xirr = $spreadsheet->xirr($mountly_pay,$dates);
         $result['xirr'] = $xirr;
         return $result;
@@ -495,7 +507,7 @@ class Finance {
 		$perc = $percent/100;
 		$nextPaymentDay = $this->Pay_Dates($loan_amount,$period,$start_date,$prevPaymentDay,$loan_fee_day);
 		$diff_dates = $this->Pay_Dates_Diff($period,$nextPaymentDay);
-        if($this->repayment_method == null && $this->repayment_method == 1 && $this->loan_principial_grace_period == null && $this->loan_interest_grace_period ==null) {
+        if(($this->repayment_method == null || $this->repayment_method == 1) && $this->loan_principial_grace_period == null && $this->loan_interest_grace_period ==null) {
             $annuity = $this->Annuity($loan_amount, $period, $start_date, $prevPaymentDay, $loan_fee_day, $percent,$this->loan_repayment_period);
         }
         else{
